@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chat with Headers by Date</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/uswds/3.8.1/css/uswds.min.css">
+<style>
+  /* Custom styles */
+  .chat-container {
+    margin-top: 20px;
+  }
+  .message-sender {
+    font-weight: bold;
+    margin-top: 10px;
+  }
+  .message-time {
+    color: #666;
+    font-size: 0.8em;
+    margin-bottom: 5px;
+  }
+  .message {
+    margin-left: 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #ccc;
+  }
+</style>
+</head>
+<body>
+
+<script>
+// Function to format date to HH:MM (no seconds) in US Eastern Time
+function formatToESTTime(dateString) {
+  const date = new Date(dateString);
+  date.setUTCMinutes(date.getUTCMinutes());
+  return date.toLocaleTimeString(`en-US`, {hour: `numeric`, minute: `2-digit`, hour12: true});
+}
+
+// Function to generate HTML chat interface with headers by date
+function generateChatWithHeaders(data) {
+  let html = `<div class="chat-container">`;
+  
+  let lastYear = null;
+  let lastMonth = null;
+  let lastDay = null;
+  let lastSender = null;
+  let lastTime = null;
+  
+  // Iterate over messages array
+  data.messages.forEach(message => {
+    const sender = message.creator.name;
+    const time = formatToESTTime(message.created_date);
+    const date = new Date(message.created_date);
+    const year = date.getFullYear();
+    const month = date.getMonth() + 1; // Month is zero-indexed, so add 1
+    const day = date.getDate();
+    
+    // Add year header if it`s different from the previous message
+    if (year !== lastYear) {
+      if (lastYear !== null) {
+        html += `</ul></div></div></div></div></div></div>`;
+      }
+      let yearAccordion = 
+        `<div class="usa-accordion">
+          <h4 class="usa-accordion__heading">
+           <button type="button" class="usa-accordion__button" aria-expanded="false" aria-controls="msg-${year}">
+            ${year}
+          </button>
+          </h4>
+          <div id="msg-${year}" class="usa-accordion__content usa-prose" aria-hidden="false">`;
+      html+=yearAccordion;
+      lastYear = year;
+      lastMonth = null; // Reset lastMonth when changing year
+      lastDay = null; // Reset lastDay when changing year
+      lastSender = null; // Reset lastSender when changing year
+      lastTime = null; // Reset lastTime when changing year
+    }
+    
+    // Add month header if it`s different from the previous message
+    if (month !== lastMonth) {
+      if (lastMonth !== null) {
+        html += `</ul></div></div></div></div>`;
+      }
+      let monthAccordion = 
+        `<div class="usa-accordion">
+          <h4 class="usa-accordion__heading">
+            <button type="button" class="usa-accordion__button" aria-expanded="false" aria-controls="msg-${getMonthName(month)}-${year}">
+              ${getMonthName(month)}
+            </button>
+          </h4>
+          <div id="msg-${getMonthName(month)}-${year}" class="usa-accordion__content usa-prose" aria-hidden="false">`;
+      html+=monthAccordion
+      lastMonth = month;
+      lastDay = null; // Reset lastDay when changing month
+      lastSender = null; // Reset lastSender when changing month
+      lastTime = null; // Reset lastTime when changing month
+    }
+    
+    // Add day header if it`s different from the previous message
+    if (day !== lastDay) {
+      if (lastDay !== null) {
+        html += `</ul></div></div>`;
+      }
+      let dayAccordion =
+        `<div class="usa-accordion">
+          <h4 class="usa-accordion__heading">
+            <button type="button" class="usa-accordion__button"  aria-expanded="false" aria-controls="msg-${day}-${getMonthName(month)}-${year}">
+              ${day}
+            </button>
+          </h4>
+          <div id="msg-${day}-${getMonthName(month)}-${year}" class="usa-accordion__content" aria-hidden="false">
+            <ul class="usa-list usa-list--unstyled">`;
+      html+=dayAccordion;
+      lastDay = day;
+      lastSender = null; // Reset lastSender when changing day
+      lastTime = null; // Reset lastTime when changing day
+    }
+    
+    // Add sender if it`s different from the previous message
+    if (sender !== lastSender) {
+      html+= 
+        `<li>
+          <div class="message-sender">${sender}</div>
+        </li>`;
+      lastSender = sender;
+      lastTime = null; // Reset lastTime when changing sender
+    }
+    
+    // Add time if it`s more than 5 minutes after the previous message
+    if (lastTime === null || (date - lastTime) / (1000 * 60) > 5) {
+      html+=
+        `<li>
+          <div class="message-time">${time}</div>
+        </li>`;
+      lastTime = date;
+    }
+    
+    if (message.text) {
+      // Add message
+      html += 
+        `<li>
+          <div class="message">
+            <div class="message-text" id="${message.message_id}">${message.text}</div>
+          </div>
+        </li>`;
+    } else if (message.attached_files) {
+      message.attached_files.forEach(file => {
+        `<li>
+          <div class="message">
+            <div class="message-text" id="${message.message_id}">
+              <img src="images/${file.export_name}" class="width-card-lg" />
+            </div>
+          </div>
+        </li>`;
+      })
+    }
+  });
+  
+  html += `</ul>`; // Close day list
+  html += `</div>`; // Close day accordion content
+  html += `</div>`; // Close month accordion content
+  html += `</div>`; // Close year accordion content
+  html += `</div>`; // Close chat container
+  return html;
+}
+
+// Function to get month name from month number
+function getMonthName(month) {
+  const months = [`January`, `February`, `March`, `April`, `May`, `June`, `July`, `August`, `September`, `October`, `November`, `December`];
+  return months[month - 1]; // Month is zero-indexed, so subtract 1
+}
+
+// Fetch JSON data from messages.json file
+fetch(`messages-sample.json`)
+  .then(response => response.json())
+  .then(jsonData => {
+    // Get the HTML chat interface with headers by date
+    const chatWithHeadersHtml = generateChatWithHeaders(jsonData);
+
+    // Display the chat interface with headers by date
+    document.body.innerHTML = chatWithHeadersHtml;
+  })
+  .catch(error => console.error(`Error fetching messages:`, error));
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/uswds/3.8.1/js/uswds.min.js"></script>
+</body>
+</html>

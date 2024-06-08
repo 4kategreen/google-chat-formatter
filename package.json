@@ -1,0 +1,15 @@
+{
+  "name": "google-chat-formatter",
+  "version": "1.0.0",
+  "description": "format google chat messages from the json you get from google takeout",
+  "main": "messages.html",
+  "scripts": {
+    "test": "test/index.js"
+  },
+  "keywords": [
+    "format",
+    "googlechat"
+  ],
+  "author": "Kate Green",
+  "license": "ISC"
+}
